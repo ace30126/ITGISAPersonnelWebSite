@@ -68,6 +68,13 @@ export interface Attempt {
   correct: boolean;
   mode: Mode;
   elapsedMs: number;
+  /**
+   * 소속 세션. 이게 없으면 "attempts 가 유일한 진실 원천"이 실제로 깨진다 —
+   * 모의고사 결과를 attempts 만으로 재구성할 수 없어 별도 저장이 필요해지고,
+   * 그러면 백업에서 빠져 기기 이전 시 이력이 사라진다.
+   * 나중에 붙였으므로 optional 이다. 없는 기록은 세션 미상으로 취급한다.
+   */
+  sid?: string;
 }
 
 /** attempts 가 유일한 진실 원천. srs/통계는 전부 여기서 재계산 가능하다. */
@@ -87,6 +94,20 @@ export interface ExamResult {
   totalCorrect: number;
   /** 한 과목이라도 40% 미만 */ failedSubjects: SubjectId[];
   /** 과락 없음 AND 전체 60문항 이상 */ passed: boolean;
+  /** 출제된 문항 순서 — 결과 화면에서 문항별 리뷰에 쓴다 */
+  itemIds?: string[];
+  /** itemId → 고른 보기(1..4), 미표기는 null */
+  answers?: Record<string, number | null>;
+}
+
+/** 진행 중 세션 목록("이어 풀기")을 만들기 위한 최소 메타 */
+export interface SessionMeta {
+  sid: string;
+  mode: Mode;
+  ts: number;
+  label?: string;
+  done?: number;
+  total?: number;
 }
 
 // --- AI --------------------------------------------------------------------

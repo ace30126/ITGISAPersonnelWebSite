@@ -30,8 +30,8 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM  # noqa: E402
 
 import config as C  # noqa: E402
 
-SRC = C.REPO / "web" / "public" / "data"
-DST = C.REPO / "web" / "public" / "enc"
+SRC = C.INTERIM / "shards"                    # 평문 — 배포 트리 밖
+DST = C.REPO / "web" / "public" / "enc"       # 암호문만 배포된다
 SECRETS_FILE = C.REPO / "SECRETS.md"
 
 KDF_ITERS = 250_000
@@ -183,10 +183,17 @@ def verify() -> int:
     print(f"  파일 {len(man['files'])}개  해시·JSON 파싱 "
           f"{'전부 OK' if not bad else '실패'}")
 
-    # 평문 유출 점검: 배포 대상에 문제 원문이 남아 있지 않은지
-    leaked = [p.relative_to(C.REPO).as_posix() for p in sources()]
-    print(f"\n  ⚠ 평문 샤드 {len(leaked)}개가 web/public/data/ 에 남아 있다 "
-          f"(.gitignore 대상 — 배포에서 제외할 것)")
+    # 평문 유출 점검 — 배포 트리(web/public)에 원문이 있으면 dist 로 실려 나간다
+    pub = C.REPO / "web" / "public"
+    leaked = [p.relative_to(C.REPO).as_posix()
+              for p in pub.rglob("*")
+              if p.is_file() and p.suffix.lower() in (".json", ".png")
+              and "enc" not in p.relative_to(pub).parts
+              and p.name != "manifest.json"]
+    if leaked:
+        bad.append(f"배포 트리에 평문 {len(leaked)}개: {leaked[:5]}")
+    else:
+        print("  평문 유출      없음 (web/public 에는 enc/ 와 manifest.json 뿐)")
 
     for b in bad:
         print("  -", b)

@@ -12,10 +12,13 @@ import type { ItemBody, ItemExpl, LightItem, Meta, SubjectId } from '../types';
 let manifest: Manifest | null = null;
 let key: CryptoKey | null = null;
 
-let indexCache: LightItem[] | null = null;
-let metaCache: Meta | null = null;
-const bodyCache = new Map<string, Map<string, ItemBody>>();
-const explCache = new Map<string, Map<string, ItemExpl>>();
+// 캐시는 **값이 아니라 Promise** 를 담는다.
+// 값만 담으면 캐시가 채워지기 전에 두 컴포넌트가 동시에 부를 때 같은 샤드를
+// 두 번 받아 두 번 복호화한다(PBKDF2 이후라 복호화 자체도 싸지 않다).
+let indexCache: Promise<LightItem[]> | null = null;
+let metaCache: Promise<Meta> | null = null;
+const bodyCache = new Map<string, Promise<Map<string, ItemBody>>>();
+const explCache = new Map<string, Promise<Map<string, ItemExpl>>>();
 
 export function isUnlocked(): boolean {
   return key !== null;
@@ -36,6 +39,10 @@ export function lock(): void {
   metaCache = null;
   bodyCache.clear();
   explCache.clear();
+  // objectURL 은 명시적으로 해제하지 않으면 문서가 살아 있는 한 남는다.
+  // 자산이 208장이라 잠금·해제를 반복하면 누수가 유의미해진다.
+  for (const url of assetUrls.values()) URL.revokeObjectURL(url);
+  assetUrls.clear();
 }
 
 function need(): { man: Manifest; k: CryptoKey } {
@@ -43,44 +50,50 @@ function need(): { man: Manifest; k: CryptoKey } {
   return { man: manifest, k: key };
 }
 
-export async function loadIndex(): Promise<LightItem[]> {
-  if (indexCache) return indexCache;
-  const { man, k } = need();
-  indexCache = await decryptJson<LightItem[]>(k, man, 'index/items.min.json');
+export function loadIndex(): Promise<LightItem[]> {
+  if (!indexCache) {
+    const { man, k } = need();
+    indexCache = decryptJson<LightItem[]>(k, man, 'index/items.min.json')
+      .catch((e) => { indexCache = null; throw e; });   // 실패는 캐시하지 않는다
+  }
   return indexCache;
 }
 
-export async function loadMeta(): Promise<Meta> {
-  if (metaCache) return metaCache;
-  const { man, k } = need();
-  metaCache = await decryptJson<Meta>(k, man, 'meta.json');
+export function loadMeta(): Promise<Meta> {
+  if (!metaCache) {
+    const { man, k } = need();
+    metaCache = decryptJson<Meta>(k, man, 'meta.json')
+      .catch((e) => { metaCache = null; throw e; });
+  }
   return metaCache;
 }
 
 /** 과목 샤드. 0 은 과목 미분류. */
-export async function loadBodies(subject: SubjectId | 0): Promise<Map<string, ItemBody>> {
-  const cached = bodyCache.get(String(subject));
-  if (cached) return cached;
-  const { man, k } = need();
-  const rows = await decryptJson<ItemBody[]>(k, man, `items/subject-${subject}.json`);
-  const map = new Map(rows.map((r) => [r.i, r]));
-  bodyCache.set(String(subject), map);
-  return map;
+export function loadBodies(subject: SubjectId | 0): Promise<Map<string, ItemBody>> {
+  const sk = String(subject);
+  let p = bodyCache.get(sk);
+  if (!p) {
+    const { man, k } = need();
+    p = decryptJson<ItemBody[]>(k, man, `items/subject-${subject}.json`)
+      .then((rows) => new Map(rows.map((r) => [r.i, r])))
+      .catch((e) => { bodyCache.delete(sk); throw e; });
+    bodyCache.set(sk, p);
+  }
+  return p;
 }
 
-export async function loadExpls(subject: SubjectId | 0): Promise<Map<string, ItemExpl>> {
-  const cached = explCache.get(String(subject));
-  if (cached) return cached;
-  const { man, k } = need();
-  let rows: ItemExpl[] = [];
-  try {
-    rows = await decryptJson<ItemExpl[]>(k, man, `expl/subject-${subject}.json`);
-  } catch {
-    rows = [];
+export function loadExpls(subject: SubjectId | 0): Promise<Map<string, ItemExpl>> {
+  const sk = String(subject);
+  let p = explCache.get(sk);
+  if (!p) {
+    const { man, k } = need();
+    // 해설이 없는 과목 샤드는 파일 자체가 없을 수 있다 — 빈 맵으로 흡수한다.
+    p = decryptJson<ItemExpl[]>(k, man, `expl/subject-${subject}.json`)
+      .catch(() => [] as ItemExpl[])
+      .then((rows) => new Map(rows.map((r) => [r.i, r])));
+    explCache.set(sk, p);
   }
-  const map = new Map(rows.map((r) => [r.i, r]));
-  explCache.set(String(subject), map);
-  return map;
+  return p;
 }
 
 /**
@@ -112,18 +125,30 @@ export function choicesAreImage(l: LightItem): boolean {
 }
 
 const assetUrls = new Map<string, string>();
+const assetPending = new Map<string, Promise<string>>();
 
 /**
  * Block(type:'image').src 를 <img src> 에 넣을 수 있는 objectURL 로 바꾼다.
  * 자산도 암호화돼 있어 평범한 URL 로는 못 띄운다.
+ * 해제는 lock() 이 일괄로 한다.
  */
-export async function loadAsset(src: string): Promise<string> {
+export function loadAsset(src: string): Promise<string> {
   const rel = 'assets/' + src.split('assets/').pop()!;
   const hit = assetUrls.get(rel);
-  if (hit) return hit;
-  const { man, k } = need();
-  const bytes = await decryptBytes(k, man, rel);
-  const url = URL.createObjectURL(new Blob([bytes], { type: 'image/png' }));
-  assetUrls.set(rel, url);
-  return url;
+  if (hit) return Promise.resolve(hit);
+
+  let p = assetPending.get(rel);
+  if (!p) {
+    const { man, k } = need();
+    p = decryptBytes(k, man, rel)
+      .then((buf) => {
+        const url = URL.createObjectURL(new Blob([buf], { type: 'image/png' }));
+        assetUrls.set(rel, url);
+        assetPending.delete(rel);
+        return url;
+      })
+      .catch((e) => { assetPending.delete(rel); throw e; });
+    assetPending.set(rel, p);
+  }
+  return p;
 }

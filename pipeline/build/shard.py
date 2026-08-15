@@ -21,7 +21,10 @@ sys.stdout.reconfigure(encoding="utf-8")
 
 import config as C  # noqa: E402
 
-OUT = C.REPO / "web" / "public" / "data"
+# 🔥 평문은 web/public/ 밖에 둔다.
+# Vite 는 public/ 전체를 dist 로 그대로 복사한다. 평문 샤드를 거기 두면
+# .gitignore 로 저장소는 막아도 **배포 산출물에는 원문이 실린다.**
+OUT = C.INTERIM / "shards"
 
 # 경량 인덱스 키 (짧게 — 1200줄 × 매 바이트)
 #   i=id  s=subject  y=year  n=number  a=answer  v=variant_group
