@@ -52,9 +52,11 @@ jobs:
           test "$leak" -eq 0
           test "$(find dist/enc -name '*.enc' | wc -l)" -gt 200
 
+      # enablement: true 로 Pages 를 워크플로가 직접 켜려 했으나 실패했다.
+      # GITHUB_TOKEN 으로는 Pages 생성 권한이 없는 경우가 있다.
+      # 저장소 Settings → Pages → Source 를 "GitHub Actions" 로 한 번 켜 두면
+      # 이후로는 이 단계가 기존 설정을 읽기만 한다.
       - uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
