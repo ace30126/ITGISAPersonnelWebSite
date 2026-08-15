@@ -6,8 +6,10 @@ import { VitePWA } from 'vite-plugin-pwa';
 // 팬아웃 중에 npm install 을 다시 돌리면 다른 에이전트의 node_modules 를 흔든다.
 declare const process: { env: Record<string, string | undefined> };
 
-// GitHub Pages 서브경로 배포. 저장소 이름이 바뀌면 여기만 고친다.
-const BASE = process.env.GISA_BASE ?? '/gisa-study/';
+// GitHub Pages 서브경로 배포 — 반드시 `/<저장소이름>/` 이어야 한다.
+// 여기가 틀리면 자산 경로가 전부 404 가 나고, 화면은 흰 페이지만 뜬다.
+// 저장소: github.com/ace30126/ITGISAPersonnelWebSite
+const BASE = process.env.GISA_BASE ?? '/ITGISAPersonnelWebSite/';
 
 export default defineConfig({
   base: BASE,
