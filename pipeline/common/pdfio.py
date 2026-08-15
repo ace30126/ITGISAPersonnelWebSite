@@ -175,16 +175,56 @@ def page_text_ordered(page: fitz.Page) -> str:
 
 # --- 도형 캡처 --------------------------------------------------------------
 
-def graphic_density(page: fitz.Page, bbox: tuple[float, float, float, float]) -> int:
-    """bbox 안의 벡터 드로잉 + 이미지 개수. 도형 문항 판별 신호."""
-    x0, y0, x1, y1 = bbox
-    rect = fitz.Rect(x0, y0, x1, y1)
+def _pad(r: fitz.Rect, eps: float = 1.0) -> fitz.Rect:
+    """빈 사각형을 1pt 부풀린다.
+
+    🔥 fitz.Rect.intersects() 는 **빈 사각형(폭 0 또는 높이 0)에 대해 항상 False** 다.
+    표 격자선·상자 테두리는 정확히 폭 0(수직선)/높이 0(수평선) path 로 들어오므로
+    부풀리지 않으면 표가 있는 문항이 도형 0건으로 판정된다.
+    이 버그로 주제별 문제집에서 도형 검출이 18/37 로 절반 누락돼 있었다.
+    """
+    if r.is_empty or r.width <= 0 or r.height <= 0:
+        return fitz.Rect(r.x0 - eps, r.y0 - eps, r.x1 + eps, r.y1 + eps)
+    return r
+
+
+def watermark_boxes(page: fitz.Page, min_pages_frac: float = 0.8) -> list[fitz.Rect]:
+    """페이지마다 같은 자리에 깔리는 배경 이미지(워터마크) bbox.
+
+    이걸 빼지 않으면 거의 모든 문항이 density ≥ 1 을 받아 도형 판별이 무의미해진다.
+    """
+    doc = page.parent
+    seen: dict[tuple[int, ...], int] = {}
+    for i in range(doc.page_count):
+        for info in doc[i].get_image_info():
+            key = tuple(round(v) for v in info["bbox"])
+            seen[key] = seen.get(key, 0) + 1
+    need = max(2, int(doc.page_count * min_pages_frac))
+    return [fitz.Rect(*k) for k, c in seen.items() if c >= need]
+
+
+def graphic_density(page: fitz.Page, bbox: tuple[float, float, float, float],
+                    ignore: list[fitz.Rect] | None = None) -> int:
+    """bbox 안의 벡터 드로잉 + 이미지 개수. 도형 문항 판별 신호.
+
+    ignore 에는 watermark_boxes() 결과를 넘겨 배경 이미지를 배제한다.
+    """
+    rect = fitz.Rect(*bbox)
+    ignore = ignore or []
+
+    def ignored(r: fitz.Rect) -> bool:
+        return any(abs(r.x0 - g.x0) < 2 and abs(r.y0 - g.y0) < 2
+                   and abs(r.x1 - g.x1) < 2 and abs(r.y1 - g.y1) < 2
+                   for g in ignore)
+
     n = 0
     for d in page.get_drawings():
-        if rect.intersects(d["rect"]):
+        dr = _pad(fitz.Rect(d["rect"]))
+        if rect.intersects(dr) and not ignored(dr):
             n += 1
     for info in page.get_image_info():
-        if rect.intersects(fitz.Rect(info["bbox"])):
+        ir = fitz.Rect(info["bbox"])
+        if rect.intersects(_pad(ir)) and not ignored(ir):
             n += 1
     return n
 
