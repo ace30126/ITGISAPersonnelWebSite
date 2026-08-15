@@ -19,6 +19,7 @@ let indexCache: Promise<LightItem[]> | null = null;
 let metaCache: Promise<Meta> | null = null;
 const bodyCache = new Map<string, Promise<Map<string, ItemBody>>>();
 const explCache = new Map<string, Promise<Map<string, ItemExpl>>>();
+const conceptCache = new Map<string, Promise<unknown[]>>();
 
 export function isUnlocked(): boolean {
   return key !== null;
@@ -39,6 +40,7 @@ export function lock(): void {
   metaCache = null;
   bodyCache.clear();
   explCache.clear();
+  conceptCache.clear();
   // objectURL 은 명시적으로 해제하지 않으면 문서가 살아 있는 한 남는다.
   // 자산이 208장이라 잠금·해제를 반복하면 누수가 유의미해진다.
   for (const url of assetUrls.values()) URL.revokeObjectURL(url);
@@ -80,6 +82,22 @@ export function loadBodies(subject: SubjectId | 0): Promise<Map<string, ItemBody
     bodyCache.set(sk, p);
   }
   return p;
+}
+
+/**
+ * 개념 노트 샤드. 문항과 같은 암호화 경로를 탄다.
+ * 본문 자체는 우리가 쓴 것이지만, 인용한 기출 맥락이 섞여 있어 함께 잠근다.
+ */
+export function loadConceptShard<T>(subject: SubjectId): Promise<T[]> {
+  const sk = `c${subject}`;
+  let p = conceptCache.get(sk);
+  if (!p) {
+    const { man, k } = need();
+    p = decryptJson<T[]>(k, man, `concepts/subject-${subject}.json`)
+      .catch(() => [] as T[]);          // 아직 집필 안 된 과목은 빈 배열
+    conceptCache.set(sk, p);
+  }
+  return p as Promise<T[]>;
 }
 
 export function loadExpls(subject: SubjectId | 0): Promise<Map<string, ItemExpl>> {

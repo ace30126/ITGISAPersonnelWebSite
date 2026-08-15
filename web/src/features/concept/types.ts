@@ -21,12 +21,18 @@ export interface Concept {
   id: string;
   subject: SubjectId;
   title: string;
-  level: 'core' | 'supporting' | 'trivia';
+  level?: 'core' | 'supporting' | 'trivia';
+  /** 출제 빈도 티어. 파이프라인이 실제 출제량으로 계산해 넣는다. */
+  tier?: Tier;
   tags: string[];
-  /** 마크다운 */
+  /** 배정표의 개념명. 관련 기출 자동 연결의 키다. */
+  keywords?: string[];
+  /** 마크다운. SVG 는 떼어내고 `[[fig:n]]` 자리표시자가 남는다. */
   body: string;
   /** 수동 pin 된 문항 id */
   items: string[];
+  /** kw 태그로 자동 연결된 문항 id. 같은 과목·고빈도 순으로 정렬돼 있다. */
+  auto?: string[];
   quiz: ConceptQuiz[];
   diagrams?: ConceptDiagram[];
 }

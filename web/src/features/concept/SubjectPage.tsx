@@ -18,7 +18,7 @@ const TAG_LABEL: Record<string, string> = {
   'topic:calc': '계산',
 };
 
-const LEVEL_LABEL: Record<Concept['level'], string> = {
+const LEVEL_LABEL: Record<NonNullable<Concept['level']>, string> = {
   core: '핵심',
   supporting: '보조',
   trivia: '지엽',
@@ -145,7 +145,7 @@ export default function SubjectPage() {
                       </span>
                     </div>
                     <p className="mt-1.5 text-[11px] opacity-60" title={f ? freqTitle(f) : ''}>
-                      {LEVEL_LABEL[c.level]} · 연결 기출 {f?.pinned ?? c.items.length}개
+                      {c.level ? `${LEVEL_LABEL[c.level]} · ` : ''}연결 기출 {f?.pinned ?? c.items.length}개
                       {f && f.auto > 0 && ` (+자동 ${f.auto})`} · 퀴즈 {c.quiz.length}문항
                       {f && ` · 가중 출제 ${f.score.toFixed(1)}회`}
                     </p>

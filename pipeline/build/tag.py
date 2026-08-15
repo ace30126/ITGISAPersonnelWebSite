@@ -13,7 +13,9 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
+import unicodedata
 from collections import Counter
 from pathlib import Path
 
@@ -48,6 +50,13 @@ CONCEPTS: dict[str, list[str]] = {
              "학습성", "유연성", "CLI", "GUI", "NUI"],
     "소프트웨어아키텍처": ["소프트웨어 아키텍처", "아키텍처 패턴", "레이어 패턴",
                     "MVC", "파이프 필터", "클라이언트 서버"],
+    # 아래 둘은 집필 중에 드러난 누락이다. 1과목에 SOLID·CASE 문항이 꾸준히
+    # 나오는데 사전에 없어서 'SSO'(인증기술)·'DAS'(스토리지) 같은 오답 보기에
+    # 잘못 걸리고 있었다. 제 이름을 주는 것이 옳은 수정이다.
+    "SOLID원칙": ["solid", "단일 책임", "개방 폐쇄", "리스코프", "liskov",
+                "인터페이스 분리", "의존 역전", "srp", "ocp", "lsp", "isp", "dip"],
+    "CASE도구": ["case 도구", "상위 case", "하위 case", "통합 case",
+                "n-s 차트", "nassi", "hipo", "자동화 도구"],
     "모듈화": ["모듈화", "modularity", "팬인", "팬아웃", "fan-in", "fan-out"],
     "결합도": ["결합도", "coupling", "자료 결합", "스탬프 결합", "제어 결합",
              "공통 결합", "내용 결합"],
@@ -162,12 +171,44 @@ CONCEPTS: dict[str, list[str]] = {
 }
 
 
-def build_matcher() -> list[tuple[str, str]]:
-    """(정규화된 표면형, 대표어). 긴 표면형부터 검사해 부분일치 오탐을 줄인다."""
-    pairs = [(norm(surf), rep)
-             for rep, surfs in CONCEPTS.items() for surf in surfs]
-    pairs = [(s, r) for s, r in pairs if len(s) >= 2]
-    pairs.sort(key=lambda p: -len(p[0]))
+def match_text(s: str) -> str:
+    """매칭용 텍스트. norm() 과 달리 **공백을 남긴다.**
+
+    norm() 은 공백을 전부 지운다. 그러면 영문 약어가 단어 경계를 잃고
+    아무 데나 걸린다 — 'LOC' 이 'block'·'allocation' 안에 잡혀 Mesh Network
+    문항이 비용산정에, 'MAC' 이 'HMAC'·'MAC 주소' 에 잡혀 TensorFlow 문항이
+    접근통제에 연결됐다. 집필자 둘이 독립적으로 같은 증상을 보고했다.
+    """
+    s = unicodedata.normalize("NFKC", s).lower()
+    s = re.sub(r"\s+", " ", s)
+    return s
+
+
+def build_matcher() -> list[tuple[re.Pattern, str, bool]]:
+    """(정규식, 대표어, 약한신호여부). ASCII 표면형은 단어 경계를 강제한다.
+
+    '약한 신호' = 짧은 영문 약어(SSO, LOC, MAC, SAN, DAS …).
+    보기 한 칸에 한 번 스쳐 지나갔다면 그 문항의 주제가 아니라 오답 미끼다.
+    """
+    pairs: list[tuple[re.Pattern, str, bool]] = []
+    seen: set[tuple[str, str]] = set()
+    for rep, surfs in CONCEPTS.items():
+        for surf in surfs:
+            t = match_text(surf).strip()
+            if len(t) < 2 or (t, rep) in seen:
+                continue
+            seen.add((t, rep))
+            esc = re.escape(t).replace(r"\ ", r"\s*")   # 'primary key' ↔ 'primarykey'
+            ascii_only = bool(re.fullmatch(r"[a-z0-9 .\-/&+]+", t))
+            if ascii_only:
+                # 영문·숫자: 앞뒤가 영숫자면 다른 낱말의 일부다
+                pat = rf"(?<![a-z0-9]){esc}(?![a-z0-9])"
+            else:
+                pat = esc
+            weak = ascii_only and len(t.replace(" ", "")) <= 4
+            pairs.append((re.compile(pat), rep, weak))
+    # 긴 표면형부터 — 짧은 것이 먼저 먹어 버리지 않게
+    pairs.sort(key=lambda p: -len(p[0].pattern))
     return pairs
 
 
@@ -185,13 +226,21 @@ def main() -> int:
     tagged = Counter()
     per_item = []
     for it in items:
-        hay = norm(it.get("stem", "") + " " + " ".join(it.get("choices", [])))
+        # 지문에 2회 이상 걸리거나 지문에 걸린 것만 태그한다.
+        # 보기 한 칸에 스쳐 지나간 낱말은 그 문항의 주제가 아니다 —
+        # SOLID 문항의 오답 보기 'SSO' 가 인증기술 태그를 받는 식이었다.
+        stem = match_text(it.get("stem", ""))
+        whole = match_text(it.get("stem", "") + " " + " ".join(it.get("choices", [])))
         found: list[str] = []
-        for surf, rep in matcher:
+        for pat, rep, weak in matcher:
             if rep in found:
                 continue
-            if surf in hay:
-                found.append(rep)
+            if pat.search(stem):
+                found.append(rep)                       # 지문에 있으면 주제다
+            elif not weak and pat.search(whole):
+                found.append(rep)                       # 보기에만 있어도 구체적 용어면 인정
+            elif weak and len(pat.findall(whole)) >= 2:
+                found.append(rep)                       # 짧은 약어는 두 번 이상일 때만
         tags = [t for t in it.get("tags", []) if not t.startswith("kw:")]
         tags += [f"kw:{r}" for r in found]
         it["tags"] = tags

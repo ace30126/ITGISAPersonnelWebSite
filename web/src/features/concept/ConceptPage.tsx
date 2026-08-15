@@ -1,7 +1,8 @@
 // 개념 페이지 — 본문 · 도식 · 미니 퀴즈 · 관련 기출 · AI 비유 설명.
 //
-// 개념 본문은 암호화 샤드가 아니라서 잠금과 무관하게 항상 보인다.
-// 기출(관련 문항)만 잠금이 필요하므로 로딩·오류를 따로 관리한다.
+// 개념 본문도 Phase 5 부터 암호화 샤드에서 온다(concepts/subject-{n}.json).
+// 다만 기출(관련 문항)은 별도 샤드라 로딩·오류를 따로 관리한다 —
+// 본문은 떴는데 기출만 못 여는 상태를 사용자에게 정확히 알려 주기 위해서다.
 
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -10,7 +11,7 @@ import { SUBJECT_NAMES, type ItemBody, type ItemExpl, type LightItem } from '../
 import WhyPanel from '../ai/WhyPanel';
 import { getConcept, loadSubjectConcepts } from './data';
 import { computeSubjectFreq, type ConceptFreq } from './freq';
-import Markdown from './MarkdownView';
+import ConceptBody from './ConceptBody';
 import { rankRelated } from './match';
 import Quiz from './Quiz';
 import RelatedItems from './RelatedItems';
@@ -127,28 +128,15 @@ export default function ConceptPage() {
       </div>
 
       <section className="mt-5">
-        <Markdown src={concept.body} className="text-sm" />
+        <ConceptBody
+          body={concept.body}
+          diagrams={concept.diagrams}
+          className="text-sm"
+        />
       </section>
 
-      {concept.diagrams && concept.diagrams.length > 0 && (
-        <section className="mt-5">
-          <h2 className="text-base font-bold">도식</h2>
-          <div className="mt-2 space-y-3">
-            {concept.diagrams.map((d) => (
-              <div
-                key={d.id}
-                className="scroll-x rounded-2xl border border-ink-700 bg-ink-800/60 p-3"
-              >
-                {/* 빌드타임에 우리가 만든 SVG 만 들어온다. currentColor 라 다크모드 그대로 따라간다. */}
-                <div
-                  className="min-w-[30rem] text-white/90"
-                  dangerouslySetInnerHTML={{ __html: d.svg }}
-                />
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      {/* 도식은 ConceptBody 가 본문의 [[fig:n]] 자리에 끼워 넣는다.
+          여기서 또 그리면 같은 그림이 두 번 나온다 — 저자가 둔 위치가 맞다. */}
 
       {concept.quiz.length > 0 && (
         <section className="mt-6">
