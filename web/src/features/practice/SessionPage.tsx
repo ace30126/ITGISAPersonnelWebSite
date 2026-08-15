@@ -75,35 +75,31 @@ export default function SessionPage() {
     return () => { alive = false; };
   }, [answered, light]);
 
-  const save = useCallback(async (next: PracticeState) => {
-    setState(next);
-    await persistSession(sid, 'practice', next, {
-      label: next.label,
-      total: next.itemIds.length,
-      done: Object.keys(next.answers).length,
+  // 저장은 상태 변화에 딱 한 번 반응한다. setState 업데이터 안에서 저장하면
+  // StrictMode 가 업데이터를 두 번 부르면서 쓰기가 뒤엉킨다.
+  useEffect(() => {
+    if (!state) return;
+    void persistSession(sid, 'practice', state, {
+      label: state.label,
+      total: state.itemIds.length,
+      done: Object.keys(state.answers).length,
     });
-  }, [sid]);
+  }, [sid, state]);
 
   const move = useCallback((delta: number) => {
     setState((s) => {
       if (!s) return s;
       const next = Math.min(Math.max(s.idx + delta, 0), s.itemIds.length);
-      if (next === s.idx) return s;
-      const updated = { ...s, idx: next };
-      void persistSession(sid, 'practice', updated, {
-        label: s.label, total: s.itemIds.length, done: Object.keys(s.answers).length,
-      });
-      return updated;
+      return next === s.idx ? s : { ...s, idx: next };
     });
-  }, [sid]);
+  }, []);
 
   const swipe = useSwipe(() => move(1), () => move(-1));
 
   async function choose(n: number): Promise<void> {
     if (!state || !currentId || !light || answered) return;
     const correct = light.a === n;
-    const next: PracticeState = { ...state, answers: { ...state.answers, [currentId]: n } };
-    await save(next);
+    setState({ ...state, answers: { ...state.answers, [currentId]: n } });
     await safeRecordAttempt({
       sid,
       itemId: currentId,
@@ -174,7 +170,7 @@ export default function SessionPage() {
                   <button
                     type="button"
                     className="btn-ghost px-3 text-xs"
-                    onClick={() => void save({ ...state, idx: itemIds.indexOf(id) })}
+                    onClick={() => setState({ ...state, idx: itemIds.indexOf(id) })}
                   >
                     {itemIds.indexOf(id) + 1}번
                   </button>
@@ -188,7 +184,7 @@ export default function SessionPage() {
           <button
             type="button"
             className="btn-ghost"
-            onClick={() => void save({ ...state, idx: 0 })}
+            onClick={() => setState({ ...state, idx: 0 })}
           >
             처음부터 다시 보기
           </button>
@@ -208,7 +204,9 @@ export default function SessionPage() {
   const body = currentId ? bodies.get(currentId) : undefined;
 
   return (
-    <div className="pb-4" {...swipe}>
+    // touch-pan-y: 가로 제스처를 브라우저에 넘기지 않는다. 안 그러면 오른쪽
+    // 스와이프가 "뒤로 가기"로 먹혀서 세션 밖으로 튕긴다(실제로 튕겼다).
+    <div className="touch-pan-y pb-4" {...swipe}>
       {/* 진행 막대 */}
       <div className="mb-3 flex items-center gap-2 text-xs text-[color:var(--fg-dim)]">
         <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-ink-700">

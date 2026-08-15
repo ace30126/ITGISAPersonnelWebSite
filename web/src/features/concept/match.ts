@@ -32,7 +32,12 @@ export function keywordsOf(concept: Concept): string[] {
 const cOf = (l: LightItem): number => (Number.isFinite(l.c) && l.c > 0 ? l.c : 1);
 
 export interface RankOptions {
-  limit?: number;
+  /**
+   * 자동 매칭 행의 상한. **pin 은 여기에 포함되지 않는다** —
+   * pin 은 사람이 고른 것이라 항상 전부 보여주고, 자동은 상위 N 개만 덧붙인다.
+   * (전체 상한으로 두면 pin 이 13개인 개념에서 자동 행이 한 줄도 안 보인다)
+   */
+  autoLimit?: number;
   /** 있으면 지문 텍스트로 키워드 매칭까지 한다(본문 샤드를 이미 받은 화면에서만). */
   stems?: Map<string, string>;
 }
@@ -48,7 +53,7 @@ export function rankRelated(
   index: LightItem[],
   opts: RankOptions = {},
 ): RelatedItem[] {
-  const limit = opts.limit ?? 8;
+  const autoLimit = opts.autoLimit ?? 5;
   const { pinned, auto } = matchItems(concept, index);
   const kws = keywordsOf(concept);
 
@@ -84,5 +89,5 @@ export function rankRelated(
   }
 
   autoRows.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
-  return [...pinnedRows, ...autoRows].slice(0, limit);
+  return [...pinnedRows, ...autoRows.slice(0, autoLimit)];
 }

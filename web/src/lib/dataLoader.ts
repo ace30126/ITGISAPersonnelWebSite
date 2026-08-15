@@ -119,6 +119,29 @@ export async function loadItems(
   return out;
 }
 
+/**
+ * id 목록에 대한 해설. loadItems() 와 대칭이다.
+ * 이게 없으면 "id → 과목 → 샤드" 매핑을 소비자마다 따로 구현하게 된다.
+ */
+export async function loadExplsFor(
+  ids: string[], index?: LightItem[],
+): Promise<Map<string, ItemExpl>> {
+  const idx = index ?? (await loadIndex());
+  const byId = new Map(idx.map((l) => [l.i, l]));
+  const subjects = new Set<SubjectId | 0>();
+  for (const id of ids) subjects.add((byId.get(id)?.s ?? 0) as SubjectId | 0);
+
+  const maps = await Promise.all([...subjects].map((s) => loadExpls(s)));
+  const out = new Map<string, ItemExpl>();
+  for (const id of ids) {
+    for (const m of maps) {
+      const e = m.get(id);
+      if (e) { out.set(id, e); break; }
+    }
+  }
+  return out;
+}
+
 /** 보기가 통째로 이미지인 문항 — 텍스트 버튼 대신 PNG 를 렌더해야 한다. */
 export function choicesAreImage(l: LightItem): boolean {
   return !!l.f?.includes('ci');

@@ -125,29 +125,23 @@ export default function ExamSessionPage() {
     }
   }, [remaining, state, submit]);
 
-  const persist = useCallback((next: ExamState) => {
-    setState(next);
-    void persistSession(sid, 'exam', next, {
-      label: `모의고사 ${next.slots.length}문항`,
-      total: next.slots.length,
-      done: Object.keys(next.answers).length,
+  // 저장은 상태 변화에 한 번만 반응한다(제출 뒤에는 상태가 안 바뀌므로 되살아나지 않는다).
+  useEffect(() => {
+    if (!state || submitting.current) return;
+    void persistSession(sid, 'exam', state, {
+      label: `모의고사 ${state.slots.length}문항`,
+      total: state.slots.length,
+      done: Object.keys(state.answers).length,
     });
-  }, [sid]);
+  }, [sid, state]);
 
   const move = useCallback((delta: number) => {
     setState((s) => {
       if (!s) return s;
       const next = Math.min(Math.max(s.idx + delta, 0), s.slots.length - 1);
-      if (next === s.idx) return s;
-      const updated = { ...s, idx: next };
-      void persistSession(sid, 'exam', updated, {
-        label: `모의고사 ${s.slots.length}문항`,
-        total: s.slots.length,
-        done: Object.keys(s.answers).length,
-      });
-      return updated;
+      return next === s.idx ? s : { ...s, idx: next };
     });
-  }, [sid]);
+  }, []);
 
   const swipe = useSwipe(() => move(1), () => move(-1));
 
@@ -156,13 +150,13 @@ export default function ExamSessionPage() {
     const answers = { ...state.answers };
     if (answers[slot.itemId] === n) delete answers[slot.itemId]; // 다시 누르면 표기 취소
     else answers[slot.itemId] = n;
-    persist({ ...state, answers });
+    setState({ ...state, answers });
   }
 
   function jump(to: number): void {
     if (!state) return;
     setOmr(false);
-    persist({ ...state, idx: to });
+    setState({ ...state, idx: to });
   }
 
   if (missing) {
@@ -188,7 +182,7 @@ export default function ExamSessionPage() {
   const urgent = remaining != null && remaining < 5 * 60_000;
 
   return (
-    <div className="pb-4" {...swipe}>
+    <div className="touch-pan-y pb-4" {...swipe}>
       {/* 상단 sticky — 남은 시간 + 100칸 진행 도트 */}
       <div className="sticky top-[44px] z-20 -mx-4 mb-3 border-b border-ink-700 bg-ink-900/95 px-4 py-2 backdrop-blur md:top-0 md:-mx-6 md:px-6">
         <div className="flex items-center gap-3">

@@ -26,6 +26,8 @@ export interface PracticeState {
   answers: Record<string, number>;
   startedAt: number;
   label: string;
+  /** 마지막 저장 시각. 정본(IndexedDB)과 미러(localStorage) 중 최신을 고르는 기준. */
+  savedAt?: number;
 }
 
 /** 모의고사 세션 상태. */
@@ -39,6 +41,8 @@ export interface ExamState {
   limitMs: number | null;
   subjects: SubjectId[];
   seed: string;
+  /** 마지막 저장 시각. 정본과 미러 중 최신을 고르는 기준. */
+  savedAt?: number;
 }
 
 /** 결과 화면의 문항별 리뷰에 필요한 답안지 사본. */
@@ -93,27 +97,36 @@ function putMeta(meta: SessionMeta): void {
 }
 
 /** 매 응답마다 호출한다. 로컬 미러를 먼저 쓰고(동기) IndexedDB 는 뒤따른다. */
-export async function persistSession<T>(
+export async function persistSession<T extends object>(
   sid: string, mode: Mode, state: T, meta: { label: string; total: number; done: number },
 ): Promise<void> {
-  writeJson(PREFIX + sid, state);
+  const stamped = { ...state, savedAt: Date.now() };
+  writeJson(PREFIX + sid, stamped);
   putMeta({ sid, mode, ts: Date.now(), ...meta });
   try {
-    await saveSession(sid, mode, state);
+    await saveSession(sid, mode, stamped);
   } catch {
     // 로컬 미러가 있으니 복구는 된다.
   }
 }
 
-/** 정본 → 미러 순으로 찾는다. 둘 다 없으면 undefined. */
-export async function restoreSession<T>(sid: string): Promise<T | undefined> {
+/**
+ * 정본과 미러 중 **더 최신** 을 고른다.
+ * 🔥 "정본 우선" 으로 짰다가 실제로 답이 날아갔다: IndexedDB 쓰기가 아직
+ * 커밋되지 않은 채 새로고침되면 정본은 한 세대 낡은 상태를 돌려주고,
+ * 그게 방금 동기로 써 둔 미러를 덮어썼다. savedAt 으로 세대를 비교한다.
+ */
+export async function restoreSession<T extends object>(sid: string): Promise<T | undefined> {
+  const local = readJson<T & { savedAt?: number }>(PREFIX + sid);
+  let fromDb: (T & { savedAt?: number }) | undefined;
   try {
-    const fromDb = await loadSession<T>(sid);
-    if (fromDb !== undefined && fromDb !== null) return fromDb;
+    fromDb = (await loadSession<T & { savedAt?: number }>(sid)) ?? undefined;
   } catch {
-    // 무시하고 미러로 간다.
+    fromDb = undefined;
   }
-  return readJson<T>(PREFIX + sid);
+  if (!fromDb) return local;
+  if (!local) return fromDb;
+  return (local.savedAt ?? 0) > (fromDb.savedAt ?? 0) ? local : fromDb;
 }
 
 export async function dropSession(sid: string): Promise<void> {

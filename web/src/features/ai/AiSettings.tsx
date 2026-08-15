@@ -96,7 +96,7 @@ export default function AiSettings({ compact = false, onKeyChange }: AiSettingsP
             type="button"
             onClick={save}
             disabled={draft.trim().length === 0}
-            className="btn-primary text-sm"
+            className="btn-primary text-sm disabled:bg-ink-700 disabled:text-[color:var(--fg-dim)]"
           >
             저장
           </button>

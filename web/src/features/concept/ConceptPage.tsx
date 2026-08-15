@@ -17,7 +17,8 @@ import RelatedItems from './RelatedItems';
 import TierBadge, { freqTitle } from './TierBadge';
 import type { Concept } from './types';
 
-const RELATED_LIMIT = 10;
+/** 자동 매칭 행 상한(pin 은 전부 보여준다) */
+const AUTO_RELATED_LIMIT = 5;
 /** AI 프롬프트에 실을 기출 개수(opt-in 일 때만 실제로 전송) */
 const AI_ITEM_LIMIT = 3;
 
@@ -78,7 +79,7 @@ export default function ConceptPage() {
     if (!concept || !exam) return [];
     const stems = new Map<string, string>();
     for (const [k, v] of exam.bodies) stems.set(k, v.stem);
-    return rankRelated(concept, exam.index, { limit: RELATED_LIMIT, stems });
+    return rankRelated(concept, exam.index, { autoLimit: AUTO_RELATED_LIMIT, stems });
   }, [concept, exam]);
 
   const aiItems = useMemo(() => {
@@ -140,7 +141,7 @@ export default function ConceptPage() {
               >
                 {/* 빌드타임에 우리가 만든 SVG 만 들어온다. currentColor 라 다크모드 그대로 따라간다. */}
                 <div
-                  className="min-w-[20rem] text-white/90"
+                  className="min-w-[30rem] text-white/90"
                   dangerouslySetInnerHTML={{ __html: d.svg }}
                 />
               </div>

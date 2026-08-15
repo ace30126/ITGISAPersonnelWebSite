@@ -202,6 +202,8 @@ export function stripMarkdown(src: string): string {
     .replace(/\*([^*]+)\*/g, '$1')
     .replace(/`([^`]+)`/g, '$1')
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    // 표 구분행(|---|---|)은 의미가 없어 통째로 버린다
+    .replace(/^\s*\|?[\s:|-]*\|[\s:|-]*$/gm, '')
     .replace(/\|/g, ' ')
     .replace(/[ \t]+/g, ' ')
     .replace(/\n{2,}/g, '\n')

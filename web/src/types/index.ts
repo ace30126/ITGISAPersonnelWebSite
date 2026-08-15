@@ -2,6 +2,8 @@
 // feature 에이전트는 여기서 import 만 하고 고치지 않는다.
 
 export type SubjectId = 1 | 2 | 3 | 4 | 5;
+/** 과목 필터·샤드 키. 0 은 과목 미분류(27문항). */
+export type SubjectFilterId = SubjectId | 0;
 export const SUBJECT_NAMES: Record<SubjectId, string> = {
   1: '소프트웨어 설계',
   2: '소프트웨어 개발',

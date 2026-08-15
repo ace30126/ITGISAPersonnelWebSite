@@ -113,7 +113,7 @@ export default function WhyPanel({ concept, itemStems = [] }: WhyPanelProps) {
           type="button"
           onClick={() => void run()}
           disabled={disabled}
-          className="btn-primary text-sm disabled:cursor-not-allowed"
+          className="btn-primary text-sm disabled:cursor-not-allowed disabled:bg-ink-700 disabled:text-[color:var(--fg-dim)]"
         >
           {status === 'streaming' ? '쓰는 중…' : '이건 왜 그럴까요?'}
         </button>

@@ -67,8 +67,19 @@ describe('rankRelated', () => {
     expect(ids).not.toContain('unrelated');
   });
 
-  it('limit 을 지킨다', () => {
-    expect(rankRelated(stack, index, { stems, limit: 2 })).toHaveLength(2);
+  it('autoLimit 은 자동 매칭만 자른다 — pin 은 잘리지 않는다', () => {
+    const rows = rankRelated(stack, index, { stems, autoLimit: 1 });
+    expect(rows).toHaveLength(2); // pin 1 + auto 1
+    expect(rows[0].source).toBe('pinned');
+    expect(rows.filter((r) => r.source === 'auto')).toHaveLength(1);
+  });
+
+  it('pin 이 많아도 자동 매칭 자리가 사라지지 않는다', () => {
+    const many = { ...stack, items: ['pin1', 'p2', 'p3', 'p4'] };
+    const idx = [...index, li('p2', 2, 1), li('p3', 2, 1), li('p4', 2, 1)];
+    const rows = rankRelated(many, idx, { stems, autoLimit: 2 });
+    expect(rows.filter((r) => r.source === 'pinned')).toHaveLength(4);
+    expect(rows.filter((r) => r.source === 'auto').length).toBeGreaterThan(0);
   });
 
   it('지문이 없으면 태그 매칭만으로 채운다', () => {

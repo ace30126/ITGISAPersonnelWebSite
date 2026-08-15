@@ -185,11 +185,14 @@ def verify() -> int:
 
     # 평문 유출 점검 — 배포 트리(web/public)에 원문이 있으면 dist 로 실려 나간다
     pub = C.REPO / "web" / "public"
+    # 앱 자체의 치장(아이콘·매니페스트)은 저작물이 아니다.
+    allow = {"manifest.json", "icon-192.png", "icon-512.png", "favicon.svg",
+             "apple-touch-icon.png", "robots.txt"}
     leaked = [p.relative_to(C.REPO).as_posix()
               for p in pub.rglob("*")
               if p.is_file() and p.suffix.lower() in (".json", ".png")
               and "enc" not in p.relative_to(pub).parts
-              and p.name != "manifest.json"]
+              and p.name not in allow]
     if leaked:
         bad.append(f"배포 트리에 평문 {len(leaked)}개: {leaked[:5]}")
     else:
