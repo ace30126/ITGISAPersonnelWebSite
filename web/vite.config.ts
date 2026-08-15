@@ -19,6 +19,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
       manifest: {
+        // 기본값이 'en' 이라 명시하지 않으면 한국어 페이지가 영어로 선언된다.
+        lang: 'ko',
+        dir: 'ltr',
         name: '정보처리기사 필기',
         short_name: '정처기',
         description: '기출 1,243문항 · 개념 · 모의고사',
