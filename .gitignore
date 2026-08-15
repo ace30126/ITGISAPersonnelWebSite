@@ -1,0 +1,31 @@
+# --- 저작권 경계: 문제 원문은 절대 커밋되지 않는다 ---------------------------
+# 원본 PDF (저장소로 복사 금지, config.py 절대경로로만 참조)
+*.pdf
+
+# 추출 중간 산출물 = 문제 원문 평문
+pipeline/interim/
+pipeline/reports/
+
+# 웹 개발용 평문 데이터 (배포는 pack.py 가 만든 .enc 만)
+web/public/data/
+
+# 패스프레이즈
+SECRETS.md
+.env
+.env.*
+
+# --- 일반 ------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+node_modules/
+web/dist/
+.vite/
+*.local
+
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
