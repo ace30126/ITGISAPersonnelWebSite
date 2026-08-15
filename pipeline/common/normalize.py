@@ -24,6 +24,18 @@ _PUA_RE = re.compile("[-]")
 _ZW_RE = re.compile("[​-‏‪-‮﻿­]")
 _WS_RE = re.compile(r"\s+")
 
+# 곡선 따옴표·대시·가운뎃점은 NFKC 로 통일되지 않는다.
+# 같은 문항이 발행처마다 '모든 것' / '모든 것' 으로 갈려 해시가 어긋난다.
+_PUNCT_MAP = str.maketrans({
+    "‘": "'", "’": "'", "‚": "'", "‛": "'",
+    "“": '"', "”": '"', "„": '"', "‟": '"',
+    "´": "'", "ʼ": "'", "′": "'", "″": '"',
+    "‐": "-", "‑": "-", "‒": "-", "–": "-",
+    "—": "-", "―": "-", "−": "-", "－": "-",
+    "·": "·", "•": "·", "・": "·",
+    "…": "...",
+})
+
 
 def strip_noise(s: str) -> str:
     """표시용 경량 정리 — 제어/PUA/zero-width 제거 + 공백 정돈. 내용은 보존한다."""
@@ -43,6 +55,7 @@ def norm(s: str) -> str:
     if not s:
         return ""
     s = unicodedata.normalize("NFKC", s)
+    s = s.translate(_PUNCT_MAP)
     s = _CTRL_RE.sub("", s)
     s = _PUA_RE.sub("", s)
     s = _ZW_RE.sub("", s)
