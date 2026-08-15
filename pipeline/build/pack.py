@@ -79,7 +79,9 @@ def b64(b: bytes) -> str:
 
 
 def sources() -> list[Path]:
-    return sorted(p for p in SRC.rglob("*.json") if p.is_file())
+    """JSON 샤드 + 이미지 자산. PNG 도 저작물이므로 평문으로 배포하지 않는다."""
+    return sorted(p for p in SRC.rglob("*")
+                  if p.is_file() and p.suffix.lower() in (".json", ".png"))
 
 
 def pack() -> int:
@@ -174,7 +176,10 @@ def verify() -> int:
         if hashlib.sha256(plain).hexdigest() != f["sha256"]:
             bad.append(f"{f['path']}: 해시 불일치")
             continue
-        json.loads(plain)                     # 파싱까지 확인
+        if f["path"].endswith(".json"):
+            json.loads(plain)                 # 파싱까지 확인
+        elif not plain.startswith(b"\x89PNG"):
+            bad.append(f"{f['path']}: PNG 시그니처 아님")
     print(f"  파일 {len(man['files'])}개  해시·JSON 파싱 "
           f"{'전부 OK' if not bad else '실패'}")
 

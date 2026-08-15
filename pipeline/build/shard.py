@@ -129,6 +129,33 @@ def main() -> int:
     }
     n_meta = write(OUT / "meta.json", meta)
 
+    # 참조된 PNG 를 배포 트리로 복사한다. 이것도 저작물이므로 암호화 대상이다
+    # (pack.py 가 *.json 뿐 아니라 이 디렉터리도 함께 암호화한다).
+    import shutil
+    adst = OUT / "assets"
+    if adst.exists():
+        shutil.rmtree(adst)
+    copied = missing = 0
+    for it in items:
+        for b in it.get("stem_blocks", []):
+            if b.get("type") != "image" or not b.get("src"):
+                continue
+            rel = b["src"].split("assets/", 1)[-1]
+            s = C.ASSETS / rel
+            if not s.exists():
+                missing += 1
+                b["_missing"] = True
+                continue
+            d = adst / rel
+            d.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(s, d)
+            copied += 1
+    asset_bytes = sum(p.stat().st_size for p in adst.rglob("*") if p.is_file())
+    print(f"\n  이미지 자산   {copied}장 복사 / 원본 없음 {missing}장 "
+          f"({asset_bytes / 1024 / 1024:.2f}MB)")
+    if missing:
+        print("  ** 경고: stem_blocks 가 가리키는 PNG 가 없다. 파서 재실행 필요.")
+
     print(f"\n  본문 합계 {total_b / 1024:.1f}KB / 해설 합계 {total_e / 1024:.1f}KB "
           f"/ meta {n_meta / 1024:.1f}KB")
     print(f"  → 초기 로드는 인덱스 {n_idx / 1024:.1f}KB + meta 뿐 "
