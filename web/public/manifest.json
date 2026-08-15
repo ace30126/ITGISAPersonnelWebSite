@@ -1,0 +1,118 @@
+{
+ "version": 1,
+ "kdf": {
+  "name": "PBKDF2",
+  "hash": "SHA-256",
+  "iterations": 250000,
+  "salt": "oPy/Ef1PQFJRL4NoSF7v1g=="
+ },
+ "cipher": {
+  "name": "AES-GCM",
+  "ivLength": 12,
+  "tagLength": 128
+ },
+ "check": {
+  "iv": "edDTXfhhn9+Mgp1B",
+  "data": "8GzbmJrwG7r69K1nbK9I06hZqFBszV3I8QsJa7Q="
+ },
+ "files": [
+  {
+   "path": "expl/subject-0.json",
+   "enc": "expl/subject-0.json.enc",
+   "sha256": "9431b63fbf0adb52d726597e0fd49f76cd55b8731adcb546bc12e969377bea85",
+   "size": 7064,
+   "encSize": 7092
+  },
+  {
+   "path": "expl/subject-1.json",
+   "enc": "expl/subject-1.json.enc",
+   "sha256": "1c6c74686fbee8a0f952f114719b681a737b1d2408f47071f2d0a061a4a4b420",
+   "size": 123335,
+   "encSize": 123363
+  },
+  {
+   "path": "expl/subject-2.json",
+   "enc": "expl/subject-2.json.enc",
+   "sha256": "7cead0e2d87d22297312fbcf20d2e7e4584e3f37a4d846b0eda21cda9b22ad07",
+   "size": 118191,
+   "encSize": 118219
+  },
+  {
+   "path": "expl/subject-3.json",
+   "enc": "expl/subject-3.json.enc",
+   "sha256": "c2e895069d065c75c9755c2f6f44a7ae5acce37d68b7684378b00c7efb449f61",
+   "size": 114802,
+   "encSize": 114830
+  },
+  {
+   "path": "expl/subject-4.json",
+   "enc": "expl/subject-4.json.enc",
+   "sha256": "6296a21cf1eb8c91a73f95b54d7a351bb09682a3f2c85a23655a4ac531dbc99e",
+   "size": 138381,
+   "encSize": 138409
+  },
+  {
+   "path": "expl/subject-5.json",
+   "enc": "expl/subject-5.json.enc",
+   "sha256": "3e0c5599dbeba86e969c303fddd6155f48356b2e9c0059b8f4e51b80edd225ba",
+   "size": 107516,
+   "encSize": 107544
+  },
+  {
+   "path": "index/items.min.json",
+   "enc": "index/items.min.json.enc",
+   "sha256": "2002b70d51baaa8c71e42dbcfd85aea1e9a3a7416c1a1eda6d73c3669e02c8f5",
+   "size": 97494,
+   "encSize": 97522
+  },
+  {
+   "path": "items/subject-0.json",
+   "enc": "items/subject-0.json.enc",
+   "sha256": "44a2952d3675c240e2db79bb22efc7395cc97890c1b560def290c5b327c1358a",
+   "size": 13508,
+   "encSize": 13536
+  },
+  {
+   "path": "items/subject-1.json",
+   "enc": "items/subject-1.json.enc",
+   "sha256": "3b2058b20efa7ad8d38b4410ead7d38e5d2be5d65283827943625cbd8b60ed0d",
+   "size": 82339,
+   "encSize": 82367
+  },
+  {
+   "path": "items/subject-2.json",
+   "enc": "items/subject-2.json.enc",
+   "sha256": "c7a4655aabb2e8ecd3f8c47a2b9e00f450b8ba1684060ceb758317c37d2aa6fb",
+   "size": 72014,
+   "encSize": 72042
+  },
+  {
+   "path": "items/subject-3.json",
+   "enc": "items/subject-3.json.enc",
+   "sha256": "3b6fa7162392eb2ba0e3d094b2003e59dfa9d3359cbcbdbad6e2bba0ef08e0bb",
+   "size": 96481,
+   "encSize": 96509
+  },
+  {
+   "path": "items/subject-4.json",
+   "enc": "items/subject-4.json.enc",
+   "sha256": "cdda5aa7687c7a0b2242ec600c397004ffcb4200623ad680d1c5862d43989d0c",
+   "size": 99559,
+   "encSize": 99587
+  },
+  {
+   "path": "items/subject-5.json",
+   "enc": "items/subject-5.json.enc",
+   "sha256": "086ba63c820ae37553989e12ea664820d2229d4665de3488f8099742614a4bad",
+   "size": 88061,
+   "encSize": 88089
+  },
+  {
+   "path": "meta.json",
+   "enc": "meta.json.enc",
+   "sha256": "92688a59fbaaca9ac88ee901cba2437c4eac17fed39805b8cb76263b3f7644f4",
+   "size": 556,
+   "encSize": 584
+  }
+ ]
+}
